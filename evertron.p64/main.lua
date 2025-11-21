@@ -1,6 +1,6 @@
 --[[pod_format="raw",created="2024-03-24 00:48:06",modified="2024-08-11 10:30:55",revision=440]]
 -- E V E R T R O N --
--- equinox's port of evercore to picotron
+-- ooooggll's port of evercore to picotron
 
 -- based on evercore+ v2.0.1, which is based on evercore v2.3.0, which is based on smalleste, which is based on celeste classic
 
@@ -14,9 +14,9 @@
 		gonengazit
 		akliant
 	Evercore+
-		equinox
+		ooooggll
 	Evertron
-		equinox
+		ooooggll
 		pancelor
 --]]
 
