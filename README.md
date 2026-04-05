@@ -13,9 +13,9 @@ Based on evercore+ v2.0.1, which is based on evercore v2.3.0, which is based on 
 - gonengazit
 - akliant
 ### Evercore+
-- equinox
+- ooooggll
 ### Evertron
-- equinox
+- ooooggll
 - pancelor
 
 ## Documentation (barely)
