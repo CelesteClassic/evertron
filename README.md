@@ -44,6 +44,7 @@ Note: this documentation does not explain the features from evercore itself. For
 - `default_hair_color`: should match the color of the player's hair in the sprite itself
 - `circle_death_particles`: newleste-style circular death particles that match the color of the player's hair upon death
 - More config options coming soon
+
 By default, everything is configured to behave similar to vanilla.
 ### Dev Mode
 When `dev_mode` is enabled in the config, it allows:
