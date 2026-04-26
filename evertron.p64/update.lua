@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2024-07-29 19:55:07",modified="2024-08-11 10:30:55",revision=349]]
+--[[pod_format="raw",created="2024-07-29 19:55:07",modified="2026-04-26 20:03:39",revision=361,xstickers={}]]
 -- [update loop]
 
 
@@ -15,6 +15,11 @@ function _update()
 		seconds %= 60
 	end
 	frames %= 30
+	
+	-- debug mode
+	if config.dev_mode and keyd("f1") then
+		debug_mode = not debug_mode
+	end
 
 	if music_timer > 0 then
 		music_timer -= 1
@@ -31,10 +36,10 @@ function _update()
 
 	-- restart (soon)
 	if delay_restart > 0 then
-		cam_spdx, cam_spdy = 0, 0
+		cam.spdx, cam.spdy = 0, 0
 		delay_restart -= 1
 		if delay_restart == 0 then
-			load_level(lvl_id)
+			load_level(level.id)
 		end
 	end
 
@@ -46,15 +51,15 @@ function _update()
 		-- clamp objects that need to be clamped
 		if obj.clamps then
 			local clamped = obj.x
-			if (lvl_exit ~= "left") clamped = max(-1, clamped)
-			if (lvl_exit ~= "right") clamped = min(lvl_pw - 7, clamped)
+			if (level.exit ~= "left") clamped = max(-1, clamped)
+			if (level.exit ~= "right") clamped = min(level.pw - 7, clamped)
 			
 			if obj.x ~= clamped then
 				obj.x = clamped
 				obj.spd.x = 0
 			end
 			-- clamp on top if it's not the exit
-			if lvl_exit ~= "up" and obj.y < -1 then
+			if level.exit ~= "up" and obj.y < -1 then
 				obj.y = -1
 				obj.spd.y = 0
 			end
@@ -62,14 +67,10 @@ function _update()
 	end)
 
 	-- move camera to player
-	foreach(objects, function(obj)
-		if obj.type == player or obj.type == player_spawn then
-			move_camera(obj)
-		end
-	end)
+	camera_follow()
 
 	-- start game
-	if is_title() then
+	if is_title then
 		if start_game then
 			start_game_flash -= 1
 			if start_game_flash <= -30 then
@@ -77,8 +78,34 @@ function _update()
 			end
 		elseif btn(4) or btn(5) then
 			music(-1)
-			start_game_flash, start_game = 50, true
+			start_game_flash = 50
+			start_game = true
 			sfx(38)
 		end
+		if config.dev_mode and key("shift") then
+			if keyd("e") then
+				-- load first level with shift+e (no title screen flash)
+				begin_game()
+				goto inputs
+			elseif keyd("q") then
+				-- load last level with shift+q
+				begin_game()
+				load_level(#levels)
+				goto inputs
+			end
+		end
 	end
+	
+	-- skip levels
+	if config.dev_mode and key("shift") then
+		if keyd("e") and level.id < #levels then
+			next_level()
+		end
+		if keyd("q") and level.id > 1 then
+			load_level(level.id - 1)
+		end
+	end
+	
+	::inputs::
+	_keyd_update()
 end

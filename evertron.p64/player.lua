@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2024-07-29 19:55:57",modified="2024-08-12 08:08:16",revision=367]]
+--[[pod_format="raw",created="2024-07-29 19:55:57",modified="2026-04-26 19:54:16",revision=383,xstickers={}]]
 -- [player class]
 
 player = {
@@ -23,15 +23,20 @@ function player:update()
 	-- input (horizontal and vertical)
 	local h_input = btn(1) and 1 or btn(0) and -1 or 0
 	local v_input = btn(2) and -1 or btn(3) and 1 or 0
+	
+	-- whether the player died on this frame
+	local dead = false
 
 	-- spike collision
 	if spikes_at(self.left(), self.top(), self.right(), self.bottom(), self.spd.x, self.spd.y) then
 		kill_player(self)
+		dead = true
 	end
 	
 	-- fall into pit (unless level exit is down)
-	if self.y > lvl_ph and lvl_exit ~= "down" then
+	if self.y > level.ph and level.exit ~= "down" then
 		kill_player(self)
+		dead = true
 	end
 
 	-- on ground checks
@@ -169,12 +174,22 @@ function player:update()
 
 	-- animation
 	self.spr_off += 0.25
-	self.spr = not on_ground and (self.is_solid(h_input, 0) and 5 or 3) or -- wall slide or mid air
-	btn(3) and 6 or -- crouch
-	btn(2) and 7 or -- look up
-	self.spd.x ~= 0 and h_input ~= 0 and 1 + self.spr_off % 4 or 1 -- walk or stand
+	
+	if config.fix_player_anim_slide then
+		self.spr = not on_ground and (self.is_solid(h_input, 0) and 5 or 3) -- wall slide or mid air
+			or self.spd.x ~= 0 and h_input ~= 0 and 1 + self.spr_off % 4 -- walk
+			or btn(3) and 6 -- crouch
+			or btn(2) and 7 -- look up
+			or 1 -- stand
+	else
+		self.spr = not on_ground and (self.is_solid(h_input, 0) and 5 or 3) -- wall slide or mid air
+			or btn(3) and 6 -- crouch
+			or btn(2) and 7 -- look up
+			or self.spd.x ~= 0 and h_input ~= 0 and 1 + self.spr_off % 4 -- walk
+			or 1 -- stand
+	end
 
-	if should_exit_level(self.x,self.y) then
+	if should_exit_level(self.x, self.y) and not dead then
 		next_level()
 	end
 
@@ -183,10 +198,11 @@ function player:update()
 end
 function player:draw()
 	-- draw player hair and sprite
-	set_hair_color(self.djump)
+	local hair_col = get_hair_color(self.djump)
+	pal(config.default_hair_color, hair_col)
 	draw_hair(self)
 	self:draw_sprite()
-	pal()
+	pal(config.default_hair_color, config.default_hair_color)
 end
 
 function create_hair(obj)
@@ -196,8 +212,16 @@ function create_hair(obj)
 	end
 end
 
-function set_hair_color(djump)
-	pal(8, djump == 1 and 8 or djump == 2 and 7 + frames \ 3 % 2 * 4 or 12)
+function get_hair_color(djump)
+	local col = config.hair_colors[djump]
+	local total_frames = seconds * 30 + frames
+	
+	if type(col) == "table" then
+		local cols = col
+		local index = (total_frames \ 3) % #cols + 1
+		col = cols[index]
+	end
+	return col
 end
 
 function draw_hair(obj)
@@ -215,14 +239,27 @@ function kill_player(obj)
 	deaths += 1
 	destroy_object(obj)
 	
-	for dir = 0, 0.875, 0.125 do
-		add(dead_particles, {
-			x = obj.x + 4,
-			y = obj.y + 4,
-			t = 2,
-			dx = sin(dir) * 3,
-			dy = cos(dir) * 3
-		})
+	if config.circle_death_particles then
+		for dir = 0, 0.875, 0.125 do
+			add(dead_particles, {
+				x = obj.x + 4,
+				y = obj.y + 4,
+				t = 1,
+				c = get_hair_color(obj.djump),
+				dx = sin(dir) * 1.5,
+				dy = cos(dir) * 1.5
+			})
+		end
+	else
+		for dir = 0, 0.875, 0.125 do
+			add(dead_particles, {
+				x = obj.x + 4,
+				y = obj.y + 4,
+				t = 2,
+				dx = sin(dir) * 3,
+				dy = cos(dir) * 3
+			})
+		end
 	end
 	delay_restart = 15
 end
@@ -236,22 +273,22 @@ function player_spawn:init()
 	self.spr = 3
 	self.target = self.y
 	
-	if lvl_enter == "up" then
-		self.y = min(self.y + 48, lvl_ph)
+	if level.enter == "up" then
+		self.y = min(self.y + 48, level.ph)
 		self.spd.y = -4
-	elseif lvl_enter == "down" then
+	elseif level.enter == "down" then
 		self.y = max(self.y - 48, -4)
 		self.spd.y = 1
-	elseif lvl_enter == "right" then
+	elseif level.enter == "right" then
 		self.spd = vec(2, -1)
 		self.x -= 20
-	elseif lvl_enter == "left" then
+	elseif level.enter == "left" then
 		self.spd = vec(-2, -1)
 		self.x += 20
 		self.flip.x = true
 	end
 	
-	cam_x, cam_y = mid(self.x + 4, 64, lvl_pw - 64), mid(self.y, 64, lvl_ph - 64)
+	cam.x, cam.y = mid(self.x + 4, 64, level.pw - 64), mid(self.y, 64, level.ph - 64)
 	
 	self.state = 0
 	self.delay = 0
@@ -263,7 +300,7 @@ function player_spawn:update()
 	if self.state == 0 and self.y < self.target + 16 then
 		-- jumping up
 		self.state = 1
-		if (lvl_enter ~= "down") self.delay = 3
+		if (level.enter ~= "down") self.delay = 3
 	elseif self.state == 1 then
 		-- falling
 		self.spd.y += 0.5

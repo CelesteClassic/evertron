@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2024-07-29 20:10:42",modified="2024-08-14 16:33:55",revision=617]]
+--[[pod_format="raw",created="2024-07-29 20:10:42",modified="2026-04-26 20:05:42",revision=638,xstickers={}]]
 -- [objects]
 
 spring = {
@@ -109,7 +109,10 @@ end
 function balloon:update()
 	if self.show then
 		self.offset += 0.01
-		self.y = self.start + sin(self.offset) * 2
+		if not config.static_balloons then
+			self.y = self.start + sin(self.offset) * 2
+		end
+		
 		local hit = self.player_here()
 		if hit and hit.djump < max_djump then
 			sfx(6)
@@ -128,10 +131,17 @@ function balloon:update()
 end
 function balloon:draw()
 	if self.show then
-		for i = 7, 13 do
-			pset(self.x + 4 + sin(self.offset * 2 + i / 10), self.y + i, 6)
+		local y = self.y
+		if config.static_balloons then
+			y += sin(self.offset) * 2
 		end
-		self:draw_sprite()
+		
+		-- string
+		for i = 7, 13 do
+			pset(self.x + 4 + sin(self.offset * 2 + i / 10), y + i, 6)
+		end
+		-- balloon itself
+		spr(self.spr, self.x, y)
 	end
 end
 
@@ -161,7 +171,14 @@ end
 function fruit:update()
 	check_fruit(self)
 	self.off += 0.025
-	self.y = self.start + sin(self.off) * 2.5
+	if not config.static_balloons then
+		self.y = self.start + sin(self.off) * 2.5
+	end
+end
+function fruit:draw()
+	local y = self.y
+	if (config.static_balloons) y += sin(self.off) * 2.5
+	spr(self.spr, self.x, y)
 end
 
 fly_fruit = {
@@ -173,8 +190,8 @@ function fly_fruit:init()
 	self.sfx_delay = 8
 end
 function fly_fruit:update()
-	-- fly away
 	if has_dashed then
+		-- fly away
 		if self.sfx_delay > 0 then
 			self.sfx_delay -= 1
 			if self.sfx_delay <= 0 then
@@ -185,8 +202,8 @@ function fly_fruit:update()
 		if self.y < -16 then
 			destroy_object(self)
 		end
-	-- wait
 	else
+		-- wait
 		self.step += 0.05
 		self.spd.y = sin(self.step) * 0.5
 	end
@@ -195,6 +212,7 @@ function fly_fruit:update()
 end
 function fly_fruit:draw()
 	spr(20, self.x, self.y)
+	-- wings
 	for ox = -6, 6, 12 do
 		spr((has_dashed or sin(self.step) >= 0) and 40 or self.y > self.start and 42 or 41, self.x + ox, self.y - 2, ox == -6)
 	end
@@ -265,6 +283,18 @@ function init_fruit(self, ox, oy)
 end
 
 berry_key = {}
+function berry_key:init()
+	if (not config.fix_evercore_keys) return
+	
+	for other in all(objects) do
+		if other.type == chest then
+			return
+		end
+	end
+	
+	-- destroy key if no chests exist (take that, evercore keys!)
+	destroy_object(self)
+end
 function berry_key:update()
 	self.spr = flr(25.5 + sin(frames / 30))
 	if frames == 18 then
@@ -274,6 +304,13 @@ function berry_key:update()
 		sfx(23)
 		destroy_object(self)
 		has_key = true
+	end
+end
+function berry_key:draw()
+	if config.fix_key_wobble then
+		spr(self.spr, self.x + (self.flip.x and 1 or 0), self.y, self.flip.x)
+	else
+		self:draw_sprite()
 	end
 end
 
@@ -308,8 +345,8 @@ function platform:update()
 	self.spd.x = self.dir * 0.65
 	-- screenwrap
 	if self.x < -16 then
-		self.x = lvl_pw
-	elseif self.x > lvl_pw then
+		self.x = level.pw
+	elseif self.x > level.pw then
 		self.x = -16
 	end
 end
@@ -318,7 +355,7 @@ function platform:draw()
 end
 
 message = {
-	layer = 4
+	layer = 10
 }
 function message:init()
 	self.text = "-- celeste mountain --#this memorial to those# perished on the climb"
@@ -340,7 +377,7 @@ function message:draw()
 		for i = 1, self.index do
 			if sub(self.text, i, i) ~= "#" then
 				rectfill(_x - 2, _y - 2, _x + 7, _y + 6, 7)
-				?sub(self.text, i, i), _x, _y, 0
+				print(sub(self.text, i, i), _x, _y, 0)
 				_x += 5
 			else
 				_x = _x0
@@ -431,7 +468,9 @@ function orb:draw()
 	end
 end
 
-flag = {}
+flag = {
+	layer = 10,
+}
 function flag:init()
 	self.x += 5
 end
@@ -443,7 +482,6 @@ function flag:update()
 	end
 end
 function flag:draw()
-	spr(16 + frames / 5 % 3, self.x, self.y)
 	if self.show then
 		camera()
 		rectfill(game_w / 2 - 32, 2, game_w / 2 + 32, 31, 0)
@@ -454,12 +492,15 @@ function flag:draw()
 		camera(draw_x, draw_y)
 	end
 end
+function flag:draw_below()
+	spr(16 + frames / 5 % 3, self.x, self.y)
+end
 
 -- [object class]
 
 function init_object(type, x, y, tile)
 	-- generate and check berry id
-	local id = x .. "," .. y .. "," .. lvl_id
+	local id = x .. "," .. y .. "," .. level.id
 	if type.check_fruit and got_fruit[id] then
 		return
 	end
@@ -490,22 +531,31 @@ function init_object(type, x, y, tile)
 	function obj.bottom() return obj.top() + obj.hitbox.h - 1 end
 
 	function obj.is_solid(ox, oy)
+		ox = ox or 0
+		oy = oy or 0
+		
 		for o in all(objects) do
 			if o != obj and (o.solid_obj or o.semisolid_obj and not obj.objcollide(o, ox, 0) and oy > 0) and obj.objcollide(o, ox, oy) then
 				return true
 			end
 		end
-		return oy > 0 and not obj.is_flag(ox, 0, 3) and obj.is_flag(ox, oy, 3) or -- jumpthrough or
-		obj.is_flag(ox, oy, 0) -- solid terrain
+		
+		-- jumpthrough
+		return oy > 0 and not obj.is_flag(ox, 0, 3) and obj.is_flag(ox, oy, 3)
+		-- solid terrain
+		or obj.is_flag(ox, oy, 0)
 	end
 
 	function obj.is_ice(ox, oy)
+		ox = ox or 0
+		oy = oy or 0
+		
 		return obj.is_flag(ox, oy, 4)
 	end
 	
 	function obj.is_flag(ox, oy, flag)
-		for i = max(0, (obj.left() + ox) \ 8), min(lvl_w - 1, (obj.right() + ox) / 8) do
-			for j = max(0, (obj.top() + oy) \ 8), min(lvl_h - 1, (obj.bottom() + oy) / 8) do
+		for i = max(0, (obj.left() + ox) \ 8), min(level.w - 1, (obj.right() + ox) / 8) do
+			for j = max(0, (obj.top() + oy) \ 8), min(level.h - 1, (obj.bottom() + oy) / 8) do
 				if fget(tile_at(i, j, 2), flag) then
 					return true
 				end
@@ -514,6 +564,9 @@ function init_object(type, x, y, tile)
 	end
 
 	function obj.objcollide(other, ox, oy)
+		ox = ox or 0
+		oy = oy or 0
+		
 		return other.collideable and
 		other.right() >= obj.left() + ox and
 		other.bottom() >= obj.top() + oy and
@@ -633,28 +686,42 @@ function destroy_object(obj)
 	del(objects, obj)
 end
 
-function move_camera(obj)
+function camera_follow()
+	foreach(objects, function(obj)
+		if obj.type == player or obj.type == player_spawn then
+			move_camera(obj)
+		end
+	end)
+end
+
+function move_camera(obj, gain)
+	if (not gain) gain = cam.gain
+	
 	-- don't target camera directly on the player,
 	-- only follow if the player gets too far from the center
-	local target_x = appr(obj.x + 4, cam_x, 16)
-	local target_y = appr(obj.y, cam_y, 16)
+	local target_x = appr(obj.x + 4, cam.x, 16)
+	local target_y = appr(obj.y, cam.y, 16)
 	
-	cam_spdx = cam_gain * (target_x - cam_x)
-	cam_spdy = cam_gain * (target_y - cam_y)
+	cam.spdx = gain * (target_x - cam.x)
+	cam.spdy = gain * (target_y - cam.y)
 
-	cam_x += cam_spdx
-	cam_y += cam_spdy
+	cam.x += cam.spdx
+	cam.y += cam.spdy
 
 	-- clamp camera to level boundaries
-	local clamped = mid(cam_x, game_w / 2, lvl_pw - game_w / 2)
-	if cam_x ~= clamped then
-		cam_spdx = 0
-		cam_x = clamped
+	local clamped = mid(cam.x, game_w / 2, level.pw - game_w / 2)
+	if cam.x ~= clamped then
+		cam.spdx = 0
+		cam.x = clamped
 	end
-	clamped = mid(cam_y, game_h / 2, lvl_ph - game_h / 2)
-	if cam_y ~= clamped then
-		cam_spdy = 0
-		cam_y = clamped
+	
+	local height = level.ph
+	-- don't scroll vertically if there's less than a tile of height to scroll
+	if (height - game_h < 8) height = game_h
+	clamped = mid(cam.y, game_h / 2, height - game_h / 2)
+	if cam.y ~= clamped then
+		cam.spdy = 0
+		cam.y = clamped
 	end
 end
 

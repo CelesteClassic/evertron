@@ -1,14 +1,28 @@
---[[pod_format="raw",created="2024-07-29 20:13:01",modified="2024-08-14 16:34:12",revision=628]]
+--[[pod_format="raw",created="2024-07-29 20:13:01",modified="2026-04-26 19:42:06",revision=635,xstickers={}]]
 -- [metadata]
 
 -- level table
--- {map, title, music, exit, enter}
+-- {map, title, music, exit, enter, bg_col, cloud_col}
 -- default exit is upwards
--- if enter is not provided, it will use the direction of last level's exit (or default to "up")
+-- if enter is not provided, it will use the direction of last level's exit 
+-- (or default to "up")
 levels = {
-	{map = "map/0.map"},
-	{map = "map/2.map", title = "evergreen foothills", music = 20, exit = "right"},
-	{map = "map/1.map", title = "summit", music = 30},
+	{
+		map = "0"
+	},
+	{
+		map = "2",
+		title = "evergreen foothills",
+		music = 20,
+		exit = "right",
+		bg_col = 21,
+		cloud_col = 22
+	},
+	{
+		map = "1",
+		title = "summit",
+		music = 30
+	},
 }
 
 -- tiles stack
