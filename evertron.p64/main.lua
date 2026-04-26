@@ -1,7 +1,7 @@
---[[pod_format="raw",created="2024-03-24 00:48:06",modified="2026-04-26 20:08:57",revision=531,xstickers={}]]
+--[[pod_format="raw",created="2024-03-24 00:48:06",modified="2026-04-26 20:35:56",revision=532,xstickers={}]]
 -- E V E R T R O N --
 -- ooooggll's port of evercore to picotron
--- v0.2
+-- v1.1
 
 -- based on evercore+ v2.0.1, which is based on evercore v2.3.0, which is based on smalleste, which is based on celeste classic
 
