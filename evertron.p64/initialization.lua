@@ -1,9 +1,10 @@
---[[pod_format="raw",created="2024-07-29 19:52:34",modified="2026-05-03 21:52:20",revision=421,xstickers={}]]
+--[[pod_format="raw",created="2024-07-29 19:52:34",modified="2026-05-04 22:51:48",revision=422,xstickers={}]]
 -- [initialization]
 
 -- global tables
 objects = {}
 got_fruit = {}
+grabbed_fruit = {} -- for if a berry is added to the train but not collected
 
 -- global timers
 freeze = 0

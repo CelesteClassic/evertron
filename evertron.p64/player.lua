@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2024-07-29 19:55:57",modified="2026-05-04 04:12:06",revision=425,xstickers={}]]
+--[[pod_format="raw",created="2024-07-29 19:55:57",modified="2026-05-04 23:37:10",revision=446,xstickers={}]]
 -- [player class]
 
 player = {
@@ -14,6 +14,13 @@ function player:init()
 	self.dash_accel_x, self.dash_accel_y = 0, 0
 	self.hitbox = rectangle(1, 3, 6, 5)
 	self.spr_off = 0
+	
+	if config.train_berries then
+		self.berry_train = {}
+		self.streak = 0
+		self.berry_delay = 8
+		self.streak_delay = 0
+	end
 end
 function player:update()
 	if pause_player then
@@ -41,6 +48,15 @@ function player:update()
 
 	-- on ground checks
 	local on_ground = self.is_solid(0, 1)
+	
+	-- ground time (for berries)
+	if config.train_berries then
+		if self.is_solid(0, 1, true) then
+			if (self.berry_delay > -1) self.berry_delay -= 1
+		else
+			self.berry_delay = 8
+		end
+	end
 
 	-- landing smoke
 	if on_ground and not self.was_on_ground then
@@ -171,6 +187,8 @@ function player:update()
 			self.init_smoke()
 		end
 	end
+	
+	if (config.train_berries) self:train_berries()
 
 	-- animation
 	self.spr_off += 0.25
@@ -189,8 +207,14 @@ function player:update()
 			or 1 -- stand
 	end
 
+	-- exit levels
 	local exit_dir = should_exit_level(self.x, self.y)
 	if exit_dir and not dead then
+		-- transfer berries to the next level
+		if config.train_berries then
+			carry_berries = self.berry_train
+		end
+		
 		if config.connected_map_mode then
 			-- find the level id with the map in level[exit_dir]
 			local next_map = level.exits[exit_dir]
@@ -213,6 +237,74 @@ function player:draw()
 	draw_hair(self)
 	self:draw_sprite()
 	pal(config.default_hair_color, config.default_hair_color)
+end
+function player:train_berries()
+	local last = self
+ 
+	for obj in all(self.berry_train) do
+		-- follow
+		if not obj.objcollide(last, 0, 0) then
+			obj.x += (last.x - obj.x) / 8
+			
+			if config.static_balloons then
+				obj.y += (last.y - obj.y) / 8
+			else
+				obj.start += (last.y - obj.y) / 8
+			end
+		end
+		
+		last = obj
+	end
+	
+	-- collect on ground
+	local b = self.berry_train[1]
+	
+	if self.berry_delay == 0 then
+		if b then
+			got_fruit[b.fruit_id] = true
+			b.init_smoke()
+			
+			self.streak += 1
+			-- 1000
+			local l
+			for other in all(objects) do
+				if other.type == lifeup then
+					l = other
+				end
+			end
+			
+			if self.streak > config.oneup_streak_required then
+				sfx(63)
+			else
+				sfx(13)
+			end
+			
+			if l then
+				l.num = self.streak
+				l.duration = 30
+			else
+				init_object(lifeup, b.x, b.y).num = self.streak
+			end
+			
+			destroy_object(b)
+			
+			del(self.berry_train, b)
+			
+			self.berry_delay = 10
+			self.streak_delay = 30
+			
+			if time_ticking then
+				fruit_count += 1
+			end
+		end
+	elseif self.berry_delay < 0 then
+		self.streak = 0
+	end
+	
+	if self.streak_delay > 0 then
+		self.streak_delay -= 1
+		if (self.streak_delay == 0) self.streak = 0
+	end
 end
 
 function create_hair(obj)
@@ -249,6 +341,13 @@ function kill_player(obj)
 	deaths += 1
 	destroy_object(obj)
 	
+	if config.train_berries then
+		carry_berries = {}
+		for b in all(obj.berry_train) do
+			grabbed_fruit[b.fruit_id] = false
+		end
+	end
+	
 	if config.circle_death_particles then
 		for dir = 0, 0.875, 0.125 do
 			add(dead_particles, {
@@ -279,7 +378,6 @@ player_spawn = {
 	draw = player.draw
 }
 function player_spawn:init()
-	sfx(4)
 	self.target = self.y
 	
 	if config.connected_map_mode and self.spr == 3 then
@@ -319,8 +417,23 @@ function player_spawn:init()
 	
 	create_hair(self)
 	self.djump = max_djump
-end 
+	
+	if config.train_berries then
+		self.berry_delay = -1
+		self.streak_delay = 0
+		self.berry_train = {}
+		
+		if carry_berries and not config.connected_map_mode then
+			transfer_berries(self)
+		end
+	end
+end
+function player_spawn:ready()
+	sfx(4)
+end
 function player_spawn:update()
+	if (config.train_berries) player.train_berries(self)
+	
 	if self.state == 0 and self.y < self.target + 16 then
 		-- jumping up
 		self.state = 1
@@ -353,6 +466,7 @@ function player_spawn:update()
 			destroy_object(self)
 			local p = init_object(player, self.x, self.y)
 			p.hair = self.hair
+			p.berry_train = self.berry_train
 			p.flip.x = self.flip.x
 		end
 	end

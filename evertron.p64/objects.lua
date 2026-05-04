@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2024-07-29 20:10:42",modified="2026-05-04 04:49:54",revision=651,xstickers={}]]
+--[[pod_format="raw",created="2024-07-29 20:10:42",modified="2026-05-04 23:39:59",revision=690,xstickers={}]]
 -- [objects]
 
 spring = {
@@ -186,12 +186,15 @@ fly_fruit = {
 }
 function fly_fruit:init()
 	self.start = self.y
+	self.off = 0
+	self.off_spd = 0
 	self.step = 0.5
 	self.sfx_delay = 8
 end
 function fly_fruit:update()
 	if has_dashed then
 		-- fly away
+		self.off = appr(self.off, 0.3, 0)
 		if self.sfx_delay > 0 then
 			self.sfx_delay -= 1
 			if self.sfx_delay <= 0 then
@@ -205,38 +208,90 @@ function fly_fruit:update()
 	else
 		-- wait
 		self.step += 0.05
-		self.spd.y = sin(self.step) * 0.5
+		if config.static_balloons then
+			self.off_spd = sin(self.step) * 0.5
+			self.off += self.off_spd
+		else
+			self.spd.y = sin(self.step) * 0.5
+		end
 	end
 	-- collect
 	check_fruit(self)
 end
 function fly_fruit:draw()
-	spr(20, self.x, self.y)
+	spr(20, self.x, self.y + self.off)
+	
 	-- wings
-	for ox = -6, 6, 12 do
-		spr((has_dashed or sin(self.step) >= 0) and 40 or self.y > self.start and 42 or 41, self.x + ox, self.y - 2, ox == -6)
-	end
+	local threshold = self.start
+	if (config.static_balloons) threshold += 0.4 -- not sure why this is necessary, but this is the number in order to get it to look the same as in vanilla
+	local wing = 
+		(has_dashed or sin(self.step) >= 0) and 40 
+		or self.y + self.off > threshold and 42
+		or 41
+	spr(wing, self.x - 6, self.y + self.off - 2, true)
+	spr(wing, self.x + 6, self.y + self.off - 2, false)
 end
 
 function check_fruit(self)
-	local hit = self.player_here()
-	if hit then
-		hit.djump = max_djump
-		sfx(13)
-		got_fruit[self.fruit_id] = true
-		init_object(lifeup, self.x, self.y)
-		destroy_object(self)
-		if time_ticking then
-			fruit_count += 1
+	if config.train_berries then
+		if not self.following then
+			local hit = self.player_here()
+			
+			if hit then
+				add(hit.berry_train, self)
+				sfx(23)
+				grabbed_fruit[self.fruit_id] = true
+				self.following = true
+				
+				if self.type == fly_fruit then
+					self.type = fruit
+					self.spd = vec(0, 0)
+					self.update = fruit.update
+					self.off = 0
+					self.spr = 20
+					self.draw = self.draw_sprite
+				end
+			end
+		end
+	else
+		-- no chaining - normal collection
+		local hit = self.player_here()
+		if hit then
+			hit.djump = max_djump
+			sfx(13)
+			got_fruit[self.fruit_id] = true
+			init_object(lifeup, self.x, self.y)
+			destroy_object(self)
+			if time_ticking then
+				fruit_count += 1
+			end
+		end
+	end
+end
+
+-- transfer berries in carry_berries to player_obj
+-- (only applies to config.train_berries mode)
+function transfer_berries(player_obj)
+	player_obj.berry_train = {}
+	for b in all(carry_berries) do
+		if not got_fruit[b.fruit_id] then
+			add(objects, b)
+			add(player_obj.berry_train, b)
+			b.y = player_obj.y + 8
+			b.start = b.y
+			b.x = player_obj.x
 		end
 	end
 end
 
 lifeup = {}
 function lifeup:init()
-	self.spd.y = -0.25
+	-- if train_berries is on, the lifeup may be reused for higher numbers
+	-- and shouldn't rise up too high lol
+	if (not config.train_berries) self.spd.y = -0.25
 	self.duration = 30
 	self.flash = 0
+	self.num = 1
 end
 function lifeup:update()
 	self.duration -= 1
@@ -246,7 +301,15 @@ function lifeup:update()
 end
 function lifeup:draw()
 	self.flash += 0.5
-	?"1000", self.x - 4, self.y - 4, 7 + self.flash % 2
+	if not config.train_berries or self.num <= config.oneup_streak_required then
+		?self.num .. "000", self.x - 4, self.y - 3, 2
+		?self.num .. "000", self.x - 4, self.y - 4, 7 + self.flash % 2
+	else
+		pal(8, 11)
+		?(self.num - config.oneup_streak_required) .. " up", self.x - 4, self.y - 3, 3
+		?(self.num - config.oneup_streak_required) .. " up", self.x - 4, self.y - 4, 7 + self.flash % 2
+	end
+	pal()
 end
 
 fake_wall = {
@@ -501,7 +564,7 @@ end
 function init_object(type, x, y, tile, extra_data)
 	-- generate and check berry id
 	local id = x .. "," .. y .. "," .. level.id
-	if type.check_fruit and got_fruit[id] then
+	if type.check_fruit and (got_fruit[id] or grabbed_fruit[id]) then
 		return
 	end
 
@@ -536,13 +599,16 @@ function init_object(type, x, y, tile, extra_data)
 	function obj.top() return obj.y + obj.hitbox.y end
 	function obj.bottom() return obj.top() + obj.hitbox.h - 1 end
 
-	function obj.is_solid(ox, oy)
+	function obj.is_solid(ox, oy, only_map)
 		ox = ox or 0
 		oy = oy or 0
 		
-		for o in all(objects) do
-			if o != obj and (o.solid_obj or o.semisolid_obj and not obj.objcollide(o, ox, 0) and oy > 0) and obj.objcollide(o, ox, oy) then
-				return true
+		-- if only_map is true, ignore solid objects
+		if not only_map then
+			for o in all(objects) do
+				if o != obj and (o.solid_obj or o.semisolid_obj and not obj.objcollide(o, ox, 0) and oy > 0) and obj.objcollide(o, ox, oy) then
+					return true
+				end
 			end
 		end
 		

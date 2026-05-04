@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2024-07-29 20:11:31",modified="2026-05-04 05:37:07",revision=639,xstickers={}]]
+--[[pod_format="raw",created="2024-07-29 20:11:31",modified="2026-05-04 23:00:50",revision=647,xstickers={}]]
 -- [level loading]
 
 local game_map
@@ -114,12 +114,6 @@ function load_level(id, player_obj, enter_dir)
 		end
 	end
 	
-	-- trigger obj.ready if objects have it
-	-- (ready is called once all objects are created/initialized)
-	for obj in all(objects) do
-		if (obj.ready) obj:ready()
-	end
-	
 	if config.connected_map_mode then
 		-- transfer player from last level
 		if diff_level and player_obj then
@@ -165,6 +159,10 @@ function load_level(id, player_obj, enter_dir)
 			}
 			
 			add(objects, player_obj)
+			
+			if config.train_berries and carry_berries then
+				transfer_berries(player_obj)
+			end
 		elseif spawn_point and not first_level then
 			-- spawn player from saved spawn point
 			local spawn = init_object(
@@ -175,7 +173,16 @@ function load_level(id, player_obj, enter_dir)
 				{enter_dir = spawn_point.enter_dir}
 			)
 			if (spawn_point.flip) spawn.flip.x = true
+			if config.train_berries and carry_berries then
+				transfer_berries(spawn)
+			end
 		end
+	end
+	
+	-- trigger obj.ready if objects have it
+	-- (ready is called once all objects are created/initialized)
+	for obj in all(objects) do
+		if (obj.ready) obj:ready()
 	end
 end
 

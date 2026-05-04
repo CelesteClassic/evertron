@@ -1,7 +1,7 @@
---[[pod_format="raw",created="2024-03-24 00:48:06",modified="2026-05-04 05:32:12",revision=561,xstickers={}]]
+--[[pod_format="raw",created="2024-03-24 00:48:06",modified="2026-05-04 23:40:53",revision=613,xstickers={}]]
 -- E V E R T R O N --
 -- ooooggll's port of evercore to picotron
--- v1.2
+-- v1.3
 
 -- based on evercore+ v2.0.1, which is based on evercore v2.3.0, which is based on smalleste, which is based on celeste classic
 
@@ -72,6 +72,15 @@ config = {
 	-- instead of enter/exit, you must provide left/right/up/down in the levels table
 	-- the levels table must be set up correctly to use this! otherwise it'll break
 	connected_map_mode = false,
+	
+	-- when set to true, berries will follow you once touched (newleste-style)
+	-- multiple can be in a train, and will collect after enough ground time
+	-- they will transfer between levels too
+	train_berries = false,
+	
+	-- the amount of berries you need to collect in a row to get a 1up
+	-- (only used for train_berries mode)
+	oneup_streak_required = 6,
 }
 
 

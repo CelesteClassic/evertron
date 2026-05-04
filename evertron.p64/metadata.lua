@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2024-07-29 20:13:01",modified="2026-05-04 05:12:03",revision=686,xstickers={}]]
+--[[pod_format="raw",created="2024-07-29 20:13:01",modified="2026-05-04 23:25:03",revision=691,xstickers={}]]
 -- [metadata]
 
 -- level table
@@ -25,35 +25,38 @@ levels = {
 	},
 }
 
--- config.connected_map_mode demonstration below
--- uncomment this and enable config.connected_map_mode to see how it works!
--- instructions:
--- provide a table of exits per direction
--- where each one tells you which map that direction takes you to
--- by default, for vertical exits, the left side of both levels are aligned
--- and for horizontal exits, the top side of both levels are aligned
--- but if you provide a field like [dir]_offset, you can change the alignment
--- on vertical exits, it slides the level you're exiting into to the right by that amt
--- on horizontal exits, it slides the level you're exiting into down by that amt
--- also, if A exits into B, an exit from B -> A will automatically be created
 --[[
-levels = {
-	{
-		map = "3",
-		exits = {
-			left = "5",
-			down = "4",
-			left_offset = 3,
-		},
-	},
-	{
-		map = "4",
-	},
-	{
-		map = "5",
-	},
-}
+ config.connected_map_mode demonstration below
+ enable config.connected_map_mode to see how it works!
+ and if you're not using it, you can delete it
+ to use:
+ * provide a table of exits per direction
+   where each one tells you which map that direction takes you to
+ * by default, for vertical exits, the left side of both levels are aligned,
+   and for horizontal exits, the top side of both levels are aligned,
+   but if you provide a field like [dir]_offset, you can change the alignment
+ * on vertical exits, it slides the level you're exiting into to the right by that amt
+ * on horizontal exits, it slides the level you're exiting into down by that amt
+ * also, if A exits into B, an exit from B -> A will automatically be created
 --]]
+if config.connected_map_mode then
+	levels = {
+		{
+			map = "3",
+			exits = {
+				left = "5",
+				down = "4",
+				left_offset = 3,
+			},
+		},
+		{
+			map = "4",
+		},
+		{
+			map = "5",
+		},
+	}
+end
 
 -- tiles stack
 -- assigned objects will spawn from tiles set here

@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2024-07-29 19:55:07",modified="2026-05-03 18:34:00",revision=364,xstickers={}]]
+--[[pod_format="raw",created="2024-07-29 19:55:07",modified="2026-05-04 23:31:46",revision=366,xstickers={}]]
 -- [update loop]
 
 
@@ -17,7 +17,7 @@ function _update()
 	frames %= 30
 	
 	-- debug mode
-	if config.dev_mode and keyd("f1") then
+	if config.dev_mode and keyd("`") then
 		debug_mode = not debug_mode
 	end
 
