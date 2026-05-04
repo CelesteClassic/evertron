@@ -1,7 +1,7 @@
---[[pod_format="raw",created="2024-03-24 00:48:06",modified="2026-04-26 20:35:56",revision=532,xstickers={}]]
+--[[pod_format="raw",created="2024-03-24 00:48:06",modified="2026-05-04 05:32:12",revision=561,xstickers={}]]
 -- E V E R T R O N --
 -- ooooggll's port of evercore to picotron
--- v1.1
+-- v1.2
 
 -- based on evercore+ v2.0.1, which is based on evercore v2.3.0, which is based on smalleste, which is based on celeste classic
 
@@ -22,6 +22,7 @@
 --]]
 
 config = {
+	-- vid_mode changes the resolution
 	-- 0: 480x270 (should be supported if you want more pixels, but you'll need big levels)
 	-- 1 and 2: picotron hasn't implemented them yet
 	-- 3: 240x135 (default for evertron)
@@ -35,7 +36,7 @@ config = {
 	
 	-- when set to true, if all chest berries in a level are collected,
 	-- keys will no longer persist
-	fix_evercore_keys = false,
+	fix_evercore_keys = true,
 	
 	-- when set to true, keys don't appear to wobble back and forth a single
 	-- pixel every time they flip horizontally
@@ -65,6 +66,12 @@ config = {
 	-- when set to true, death particles are circles the same color as
 	-- the player's hair (similar to newleste)
 	circle_death_particles = false,
+	
+	-- when set to true, the map will behave more like newleste
+	-- meaning you can go back and forth between levels via multiple sides
+	-- instead of enter/exit, you must provide left/right/up/down in the levels table
+	-- the levels table must be set up correctly to use this! otherwise it'll break
+	connected_map_mode = false,
 }
 
 

@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2024-07-29 20:10:42",modified="2026-04-26 20:05:42",revision=638,xstickers={}]]
+--[[pod_format="raw",created="2024-07-29 20:10:42",modified="2026-05-04 04:49:54",revision=651,xstickers={}]]
 -- [objects]
 
 spring = {
@@ -283,7 +283,7 @@ function init_fruit(self, ox, oy)
 end
 
 berry_key = {}
-function berry_key:init()
+function berry_key:ready()
 	if (not config.fix_evercore_keys) return
 	
 	for other in all(objects) do
@@ -498,7 +498,7 @@ end
 
 -- [object class]
 
-function init_object(type, x, y, tile)
+function init_object(type, x, y, tile, extra_data)
 	-- generate and check berry id
 	local id = x .. "," .. y .. "," .. level.id
 	if type.check_fruit and got_fruit[id] then
@@ -523,6 +523,12 @@ function init_object(type, x, y, tile)
 	if tile and tile & 0x4000 > 0 then
 		obj.flip.x = true
 		obj.spr -= 0x4000
+	end
+	
+	if extra_data then
+		for k, v in pairs(extra_data) do
+			obj[k] = v
+		end
 	end
 
 	function obj.left() return obj.x + obj.hitbox.x end
@@ -554,8 +560,8 @@ function init_object(type, x, y, tile)
 	end
 	
 	function obj.is_flag(ox, oy, flag)
-		for i = max(0, (obj.left() + ox) \ 8), min(level.w - 1, (obj.right() + ox) / 8) do
-			for j = max(0, (obj.top() + oy) \ 8), min(level.h - 1, (obj.bottom() + oy) / 8) do
+		for i = max(-1, (obj.left() + ox) \ 8), min(level.w, (obj.right() + ox) / 8) do
+			for j = max(-1, (obj.top() + oy) \ 8), min(level.h, (obj.bottom() + oy) / 8) do
 				if fget(tile_at(i, j, 2), flag) then
 					return true
 				end
@@ -649,6 +655,36 @@ function init_object(type, x, y, tile)
 				end
 				obj.collideable = true
 			end
+		end
+	end
+	
+	function obj.clamp()
+		local clamped = obj.x
+		if config.connected_map_mode then
+			if not is_tile_in_lvl(obj.left() \ 8, obj.y \ 8) then
+				-- left side clamp
+				clamped = max(-1, clamped)
+			end
+			if not is_tile_in_lvl(obj.right() \ 8, obj.y \ 8) then
+				-- right side clamp
+				clamped = min(level.pw - 7, clamped)
+			end
+		else
+			-- left side clamp
+			if (not is_exit("left")) clamped = max(-1, clamped)
+			
+			-- right side clamp
+			if (not is_exit("right")) clamped = min(level.pw - 7, clamped)
+		end
+		
+		if obj.x ~= clamped then
+			obj.x = clamped
+			obj.spd.x = 0
+		end
+		-- clamp on top if it's not the exit
+		if not is_exit("up") and obj.y < -1 then
+			obj.y = -1
+			obj.spd.y = max(obj.spd.y, 0)
 		end
 	end
 

@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2024-07-29 19:55:07",modified="2026-04-26 20:03:39",revision=361,xstickers={}]]
+--[[pod_format="raw",created="2024-07-29 19:55:07",modified="2026-05-03 18:34:00",revision=364,xstickers={}]]
 -- [update loop]
 
 
@@ -50,19 +50,7 @@ function _update()
 		
 		-- clamp objects that need to be clamped
 		if obj.clamps then
-			local clamped = obj.x
-			if (level.exit ~= "left") clamped = max(-1, clamped)
-			if (level.exit ~= "right") clamped = min(level.pw - 7, clamped)
-			
-			if obj.x ~= clamped then
-				obj.x = clamped
-				obj.spd.x = 0
-			end
-			-- clamp on top if it's not the exit
-			if level.exit ~= "up" and obj.y < -1 then
-				obj.y = -1
-				obj.spd.y = 0
-			end
+			obj.clamp()
 		end
 	end)
 

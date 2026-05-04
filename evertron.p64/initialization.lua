@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2024-07-29 19:52:34",modified="2026-04-26 18:08:45",revision=420,xstickers={}]]
+--[[pod_format="raw",created="2024-07-29 19:52:34",modified="2026-05-03 21:52:20",revision=421,xstickers={}]]
 -- [initialization]
 
 -- global tables
@@ -27,6 +27,10 @@ function _init()
 	picotron_frames = 0
 	frames = 0
 	start_game_flash = 0
+	
+	if config.connected_map_mode then
+		generate_reciprocal_exits()
+	end
 
 	music(40, 0, 7)
 	is_title = true

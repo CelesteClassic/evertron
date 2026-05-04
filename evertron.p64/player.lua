@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2024-07-29 19:55:57",modified="2026-04-26 19:54:16",revision=383,xstickers={}]]
+--[[pod_format="raw",created="2024-07-29 19:55:57",modified="2026-05-04 04:12:06",revision=425,xstickers={}]]
 -- [player class]
 
 player = {
@@ -189,8 +189,18 @@ function player:update()
 			or 1 -- stand
 	end
 
-	if should_exit_level(self.x, self.y) and not dead then
-		next_level()
+	local exit_dir = should_exit_level(self.x, self.y)
+	if exit_dir and not dead then
+		if config.connected_map_mode then
+			-- find the level id with the map in level[exit_dir]
+			local next_map = level.exits[exit_dir]
+			local next_id = get_lvl_id_for_map(next_map)
+			
+			-- pass self as a parameter to transfer player to next level
+			load_level(next_id, self, exit_dir)
+		else
+			next_level()
+		end
 	end
 
 	-- was on the ground
@@ -270,28 +280,42 @@ player_spawn = {
 }
 function player_spawn:init()
 	sfx(4)
-	self.spr = 3
 	self.target = self.y
 	
-	if level.enter == "up" then
-		self.y = min(self.y + 48, level.ph)
-		self.spd.y = -4
-	elseif level.enter == "down" then
+	if config.connected_map_mode and self.spr == 3 then
+		spawn_point = {
+			x = self.x,
+			y = self.y,
+			flip = self.flip.x,
+		}
+	end
+	
+	if (not self.enter_dir) then
+		self.enter_dir = level.enter
+	end
+	
+	if self.enter_dir == "down" then
 		self.y = max(self.y - 48, -4)
-		self.spd.y = 1
-	elseif level.enter == "right" then
+		self.spd.y = 3
+	elseif self.enter_dir == "right" then
 		self.spd = vec(2, -1)
 		self.x -= 20
-	elseif level.enter == "left" then
+	elseif self.enter_dir == "left" then
 		self.spd = vec(-2, -1)
 		self.x += 20
 		self.flip.x = true
+	else
+		-- default to up
+		self.y = min(self.y + 48, level.ph)
+		self.spd.y = -4
 	end
 	
-	cam.x, cam.y = mid(self.x + 4, 64, level.pw - 64), mid(self.y, 64, level.ph - 64)
+	-- start camera on player
+	move_camera(self, 1)
 	
 	self.state = 0
 	self.delay = 0
+	self.spr = 3
 	
 	create_hair(self)
 	self.djump = max_djump
@@ -300,7 +324,7 @@ function player_spawn:update()
 	if self.state == 0 and self.y < self.target + 16 then
 		-- jumping up
 		self.state = 1
-		if (level.enter ~= "down") self.delay = 3
+		if (self.enter_dir ~= "down") self.delay = 3
 	elseif self.state == 1 then
 		-- falling
 		self.spd.y += 0.5
